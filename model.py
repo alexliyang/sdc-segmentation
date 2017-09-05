@@ -45,6 +45,16 @@ class SlimModelEncoder(object):
 			slim.get_model_variables(self.model_name))
 		return init_fn, end_points
 
+class FCNDecoder(object):
+	def __init__(self, layers_to_connect):
+		self.layers_to_connect = layers_to_connect
+
+	def build(self, end_points):
+		pass
+
+
+
+
 """
 Load an encoder saved as `saved_model`.
 """
