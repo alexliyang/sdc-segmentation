@@ -4,6 +4,17 @@ import tensorflow as tf
 import logging
 import functools
 
+# TODO: Infer number of classes.
+# TODO: Make it transferrable across datasets via classes - road, pedastrian, car etc
+# def _transform_label(image, label):
+#   """two classes: road and background"""
+#   print(label.shape)
+#   gt_background = tf.reduce_all(label == BACKGROUND_COLOR, axis=2)
+#   gt_recip_background = tf.reduce_all(label != BACKGROUND_COLOR, axis=2)
+#   gt_background = tf.expand_dims(gt_background, axis=2)
+#   gt_recip_background = tf.expand_dims(gt_recip_background, axis=2)
+#   label = tf.concat((gt_background, gt_recip_background), axis=2)
+#   return image, label
 
 def _parse_tf_record(example_proto, num_classes=None):
   features = {"height": tf.FixedLenFeature((), tf.int64),
@@ -37,31 +48,28 @@ def get_train_inputs(batch_size, num_classes=None, image_shape=None, repeat=True
   Return the input function to get the training data
   :param batch_size:  
   :param data: 
-  :return: a function that returns (features, labels) when called.
+  :return: iterator, filename placeholder
   """
-  def train_inputs_from_tf_record():
-    with tf.name_scope('training_data'):
-      # Define placeholders
-      filename = tf.placeholder(tf.string, shape=[None])
-      dataset = tf.contrib.data.TFRecordDataset(filename)
-      parse_tf_record = functools.partial(
-        _parse_tf_record,
-        num_classes=num_classes)
-      dataset = dataset.map(parse_tf_record)
-      # image reshape
-      if image_shape:
-        resize_fn = functools.partial(
-          _resize_image,
-          image_shape=image_shape)
-        dataset = dataset.map(resize_fn)
-      if repeat:
-        dataset = dataset.repeat()
-      dataset.batch(batch_size)
-      iterator = dataset.make_initializable_iterator()
-      # sess.run(iterator.initializer, feed_dict={filename: training_filename})
-      return iterator, filename
-
-
-  return train_inputs_from_tf_record
+  #with tf.Graph().as_default():
+  with tf.name_scope('training_data'):
+    # Define placeholders
+    filename = tf.placeholder(tf.string, shape=[None])
+    dataset = tf.contrib.data.TFRecordDataset(filename)
+    parse_tf_record = functools.partial(
+      _parse_tf_record,
+      num_classes=num_classes)
+    dataset = dataset.map(parse_tf_record)
+    # image reshape
+    if image_shape:
+      resize_fn = functools.partial(
+        _resize_image,
+        image_shape=image_shape)
+      dataset = dataset.map(resize_fn)
+    dataset.batch(batch_size)
+    if repeat:
+      dataset = dataset.repeat()
+    iterator = dataset.make_initializable_iterator()
+    # sess.run(iterator.initializer, feed_dict={filename: training_filename})
+    return iterator, filename
 
 
