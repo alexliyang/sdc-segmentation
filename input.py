@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 import tensorflow as tf
-import logging
+print(tf.__version__)
 import functools
 
 # TODO: Infer number of classes.
