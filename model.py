@@ -47,69 +47,60 @@ class SlimModelEncoder(object):
 		return init_fn, end_points
 
 class FCNDecoder(object):
-	def __init__(self, tensors_to_connect, input_tensor, nb_classes, scope):
-		self.tensors_to_connect = tensors_to_connect
-		self.input_tensor = input_tensor
+	def __init__(self, end_points, nb_classes, scope):
+		"tensors to connect shd include the output tensor"
+		self.end_points = end_points
 		self.nb_classes = nb_classes
 		self.scope = scope
 
-	# def upsample(layer, nb_classes):
-	# 	output = tf.layers.conv2d_transpose(layer, nb_classes, kernel_size=4, strides=(2, 2),
-	# 	                                    padding='same',
-	# 	                                    kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
-	# 		return output
+		print(self.end_points)
 
-	def _compute_strides(self, end_points):
-		nb_upsample_filters = len(self.tensors_to_connect)
-		map_size_w = np.zeros(nb_upsample_filters)
-		map_size_h = np.zeros(nb_upsample_filters)
-		stride_w = np.zeros(nb_upsample_filters)
-		stride_h = np.zeros(nb_upsample_filters)
-		for i in range(nb_upsample_filters):
-			map_size_h[i] = end_points[self.tensors_to_connect[i]].get_shape().as_list()[2]
-			map_size_w[i] = end_points[self.tensors_to_connect[i]].get_shape().as_list()[3]
-			stride_h[i] = map_size_h[i] / map_size_h[i-1] if i > 0 else None
-			stride_w[i] = stride_w[i] / stride_w[i - 1] if i > 0 else None
-		stride_w = stride_w[~np.isnan(stride_w)]
-		stride_h = stride_h[~np.isnan(stride_h)]
-		return stride_w, stride_h
+	# def _compute_strides(self, end_points):
+	# 	nb_upsample_filters = len(self.tensors_to_connect)
+	# 	map_size_w = np.zeros(nb_upsample_filters)
+	# 	map_size_h = np.zeros(nb_upsample_filters)
+	# 	stride_w = np.zeros(nb_upsample_filters)
+	# 	stride_h = np.zeros(nb_upsample_filters)
+	# 	for i in range(nb_upsample_filters):
+	# 		map_size_h[i] = end_points[self.tensors_to_connect[i]].get_shape().as_list()[2]
+	# 		map_size_w[i] = end_points[self.tensors_to_connect[i]].get_shape().as_list()[3]
+	# 		stride_h[i] = map_size_h[i] / map_size_h[i-1] if i > 0 else None
+	# 		stride_w[i] = stride_w[i] / stride_w[i - 1] if i > 0 else None
+	# 	stride_w = stride_w[~np.isnan(stride_w)]
+	# 	stride_h = stride_h[~np.isnan(stride_h)]
+	# 	return stride_w, stride_h
 
-	# def get_deconv_filter(self, f_shape):
-	# 	# bilinear upsampling initializer
-	# 	width = f_shape[0]
-	# 	heigh = f_shape[0]
-	# 	f = ceil(width / 2.0)
-	# 	c = (2 * f - 1 - f % 2) / (2.0 * f)
-	# 	bilinear = np.zeros([f_shape[0], f_shape[1]])
-	# 	for x in range(width):
-	# 		for y in range(heigh):
-	# 			value = (1 - abs(x / f - c)) * (1 - abs(y / f - c))
-	# 			bilinear[x, y] = value
-	# 	weights = np.zeros(f_shape)
-	# 	for i in range(f_shape[2]):
-	# 		weights[:, :, i, i] = bilinear
-	#
-	# 	init = tf.constant_initializer(value=weights,
-	# 	                               dtype=tf.float32)
-	# 	var = tf.get_variable(name="up_filter", initializer=init,
-	# 	                      shape=weights.shape)
-	# 	return var
+	def convolve(self, layer):
+		return slim.conv2d(layer,
+		            self.nb_classes,
+		            [1, 1],
+		            padding='same')
 
-	def build(self, end_points):
-		stride_w, stride_h = self._compute_strides(end_points)
+	def upsample_layer(self, layer, stride):
+		#TODO: resize_image initialization instead.
+		return slim.conv2d(layer,
+		            self.nb_classes,
+		            stride,
+		            padding='same')
 
-		with tf.variable_scope(self.scope, 'fcn', [list(end_points.values())]) as sc:
+	def build(self, tensors_to_connect, strides_between_tensors):
+		nb_upsample_filters = len(tensors_to_connect) - 1
+		with tf.variable_scope(self.scope, 'fcn', [list(self.end_points.values())]) as sc:
 			end_points_collection = sc.name + '_end_points'
-			# Collect outputs for conv2d, fully_connected and max_pool2d.
-			with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
+			with slim.arg_scope([slim.conv2d],
 			                    weights_regularizer=slim.l2_regularizer(1e-4),
-			                    weights_initializer=slim.l2_regularizer(1e-4),
 			                    outputs_collections=end_points_collection):
-			for i in range(self.nb_upsample_filters-1):
-				slim.conv2d(end_points[self.tensors_to_connect[i]],
-				            self.nb_classes,
-				            [stride_h, stride_w],
-				            padding='same')
+				for i in range(nb_upsample_filters):
+					stride = strides_between_tensors[i]
+					layer = self.end_points[tensors_to_connect[i]]
+					layer = self.convolve(layer)
+					if i > 0:
+						layer = self.upsample(layer, stride)
+						net = tf.add(net, layer)
+					else:
+						net = self.upsample(layer, stride)
+		return net
+
 
 
 
