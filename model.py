@@ -58,7 +58,7 @@ class FCNDecoder(object):
     return slim.conv2d_transpose(layer, self.nb_classes, kernel_size=4, stride=stride, padding='same')
 
   def build(self, tensors_to_connect):
-    with tf.variable_scope(self.scope, 'bla', [list(self.end_points.values())]) as sc:
+    with tf.variable_scope(self.scope, values=tensors_to_connect) as sc:
       end_points_collection = sc.name + '_end_points'
       with slim.arg_scope([slim.conv2d],
                           weights_regularizer=slim.l2_regularizer(1e-4),
