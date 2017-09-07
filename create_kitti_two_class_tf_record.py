@@ -37,7 +37,7 @@ def generate_tf_examples(image_paths, label_paths):
     image = scipy.misc.imread(image_path, mode='RGB')
     gt_image_file = label_paths[os.path.basename(image_path)]
     gt_image = scipy.misc.imread(gt_image_file, mode='RGB')
-
+    # one-hot encoding
     gt_background = np.all(gt_image == BACKGROUND_COLOR, axis=2)
     gt_background = gt_background.reshape(*gt_background.shape, 1)
     gt_image = np.concatenate((gt_background, np.invert(gt_background)), axis=2)
