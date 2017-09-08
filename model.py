@@ -54,7 +54,7 @@ class FCNDecoder(object):
     return slim.conv2d(layer, self.nb_classes, [1, 1], padding='same')
 
   def upsample(self, layer, stride):
-    #TODO: resize_image initialization instead.
+    #TODO: bilinear upsampling initialization instead.
     return slim.conv2d_transpose(layer, self.nb_classes, kernel_size=4, stride=stride, padding='same')
 
   def build(self, tensors_to_connect):
