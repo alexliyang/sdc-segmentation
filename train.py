@@ -28,12 +28,34 @@ class Trainer(object):
     # are run and the gradients being computed are applied too.
     self.train_op = slim.learning.create_train_op(total_loss, self.optimizer)
 
-  def train(self, number_of_steps=1000, same_summaries_secs=300, save_interval_secs=600):
+  def train(self, iterator, filename, number_of_steps=1000, same_summaries_secs=120, keep_checkpoint_every_n_hours=0.25):
+    # Add summaries for variables and losses.
+    global_summaries = set([])
+    for model_var in slim.get_model_variables():
+      global_summaries.add(tf.summary.histogram(model_var.op.name, model_var))
+    for loss_tensor in tf.losses.get_losses():
+      global_summaries.add(tf.summary.scalar(loss_tensor.op.name, loss_tensor))
+    # total loss is batch loss + regularization loss
+    global_summaries.add(
+        tf.summary.scalar('TotalLoss', tf.losses.get_total_loss()))
+    # Merge all summaries together.
+    summary_op = tf.summary.merge(list(global_summaries), name='summary_op')
+    # Save checkpoints regularly.
+    saver = tf.train.Saver(
+        keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)
+    # init fn for the dataset ops
+    def initializer_fn(sess):
+        input_tensor = tf.get_default_graph().get_tensor_by_name('training_data/input:0')
+        sess.run(iterator.initializer, feed_dict={input_tensor: filename})
+    init_fn = initializer_fn
+    # train
     slim.learning.train(train_op=self.train_op,
                         logdir=TRAIN_DIR,
+                        summary_op=summary_op,
+                        init_fn=init_fn,
                         number_of_steps=number_of_steps,
                         save_summaries_secs=same_summaries_secs,
-                        save_interval_secs=save_interval_secs)
+                        saver=saver)
 
 
 

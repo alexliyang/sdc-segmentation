@@ -50,10 +50,9 @@ def get_train_inputs(batch_size, num_classes=None, image_shape=None, repeat=True
   :param data: 
   :return: iterator, filename placeholder
   """
-  #with tf.Graph().as_default():
   with tf.name_scope('training_data'):
     # Define placeholders
-    filename = tf.placeholder(tf.string, shape=[None])
+    filename = tf.placeholder(tf.string, shape=[None], name='input')
     dataset = tf.contrib.data.TFRecordDataset(filename)
     parse_tf_record = functools.partial(
       _parse_tf_record,
