@@ -17,6 +17,8 @@ class SlimModelEncoder(object):
   def __init__(self, name, num_classes, is_training):
     utils.slim_maybe_download(name)
     self.model_name = name
+    self.variables_to_exclude = utils.VARIABLES_TO_EXCLUDE[name]
+    # TODO: Do I even need to pass `num_classes_ here?
     self.network_fn = nets_factory.get_network_fn(name, num_classes, is_training=is_training)
     self.network_arg_scope = nets_factory.arg_scopes_map[name]
     self.preprocessing_fn = preprocessing_factory.get_preprocessing(self.model_name)
@@ -48,12 +50,15 @@ class SlimModelEncoder(object):
       _, end_points = self.network_fn(processed_images,
                                       fc_conv_padding='same',
                                       spatial_squeeze=False)
-    # load the variables
+    # create an op to assign variables from a checkpoint
     _model_ckpt_name = self.model_name + '.ckpt'
-    init_fn = slim.assign_from_checkpoint_fn(
+    _var_list = slim.get_variables(self.model_name)
+    _filtered_var_list = slim.filter_variables(_var_list, exclude_patterns=self.variables_to_exclude)
+    assign_op, feed_dict = slim.assign_from_checkpoint(
       os.path.join(utils.CHECKPOINTS_DIR, _model_ckpt_name),
-      slim.get_model_variables(self.model_name))
-    return init_fn, end_points
+      _filtered_var_list
+      )
+    return assign_op, feed_dict, end_points
 
 
 class FCNDecoder(object):

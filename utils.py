@@ -10,6 +10,8 @@ CHECKPOINTS_DIR = 'model_checkpoints/'
 PRETRAINED_MODEL_PATHS = \
 	{"vgg_16": "http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz"}
 
+VARIABLES_TO_EXCLUDE = \
+	{"vgg_16": "fc8"}
 
 def slim_maybe_download(name):
 	if not tf.gfile.Exists(CHECKPOINTS_DIR):
