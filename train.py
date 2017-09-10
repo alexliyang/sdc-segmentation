@@ -39,16 +39,6 @@ class Trainer(object):
                                                   optimizer=self.optimizer,
                                                   variables_to_train=variables_to_train)
 
-  @staticmethod
-  def _get_variables_to_train():
-    """
-    Returns a list of variables to train.
-    Decoder is frozen and encoder is trained.s
-    Returns:
-      A list of variables to train by the optimizer.
-    """
-    return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'fcn')
-
   def train(self, iterator,
             filename,
             number_of_steps=1000,
@@ -71,9 +61,13 @@ class Trainer(object):
         input_tensor = tf.get_default_graph().get_tensor_by_name('training_data/input:0')
         sess.run(iterator.initializer, feed_dict={input_tensor: filename})
     init_fn = initializer_fn
+    # Soft placement allows placing on CPU ops without GPU implementation.
+    session_config = tf.ConfigProto(allow_soft_placement=True,
+                                    log_device_placement=True)
     # train
     slim.learning.train(train_op=self.train_op,
                         logdir=TRAIN_DIR,
+                        session_config=session_config,
                         summary_op=summary_op,
                         init_fn=init_fn,
                         number_of_steps=number_of_steps,
