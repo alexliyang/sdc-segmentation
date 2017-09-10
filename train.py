@@ -6,7 +6,7 @@ sys.path.append("slim/")
 
 slim = tf.contrib.slim
 
-TRAIN_DIR = "/tmp"
+TRAIN_DIR = "/tmp/tf"
 
 
 class Trainer(object):
@@ -18,8 +18,12 @@ class Trainer(object):
     self.train_op = None
 
   def build(self, predictions, labels):
+    print("before pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
     predictions = tf.reshape(predictions, (-1, self.nb_clasess))
+    labels = tf.expand_dims(labels, 0)
     labels = tf.reshape(labels, (-1, self.nb_clasess))
+    print("pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
+
     # wraps the softmax_with_entropy fn. adds it to loss collection
     tf.losses.softmax_cross_entropy(logits=predictions, onehot_labels=labels)
     # include the regulization losses in loss collection.
@@ -28,7 +32,11 @@ class Trainer(object):
     # are run and the gradients being computed are applied too.
     self.train_op = slim.learning.create_train_op(total_loss, self.optimizer)
 
-  def train(self, iterator, filename, number_of_steps=1000, same_summaries_secs=120, keep_checkpoint_every_n_hours=0.25):
+  def train(self, iterator,
+            filename,
+            number_of_steps=1000,
+            same_summaries_secs=120,
+            keep_checkpoint_every_n_hours=0.25):
     # Add summaries for variables and losses.
     global_summaries = set([])
     for model_var in slim.get_model_variables():

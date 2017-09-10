@@ -21,19 +21,23 @@ class SlimModelEncoder(object):
     self.network_arg_scope = nets_factory.arg_scopes_map[name]
     self.preprocessing_fn = preprocessing_factory.get_preprocessing(self.model_name)
 
-  def build(self, image):
+  def build(self, image, image_shape):
     tf.logging.set_verbosity(tf.logging.INFO)
     # preprocess images. the image might need to be reshaped to cater to the model used.
-    h = w = self.network_fn.default_image_size
+    #h = w = self.network_fn.default_image_size
+    h, w = image_shape
     # TODO: This takes one image at a time :(
+    tf.Print((h, w),[(h, w)])
+    tf.Print(image, [image])
     # get the next batch from the dataset iterator
     processed_images = self.preprocessing_fn(image, h, w)
     processed_images = tf.expand_dims(processed_images, 0)
 
-
     # build the model with the arg scopes - common params
     with slim.arg_scope(self.network_arg_scope()):
-      _, end_points = self.network_fn(processed_images)
+      _, end_points = self.network_fn(processed_images,
+                                      fc_conv_padding='same',
+                                      spatial_squeeze=False)
 
     # load the variables
     _model_ckpt_name = self.model_name + '.ckpt'

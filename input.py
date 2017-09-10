@@ -64,7 +64,7 @@ def get_train_inputs(batch_size, num_classes=None, image_shape=None, repeat=True
         _resize_image,
         image_shape=image_shape)
       dataset = dataset.map(resize_fn)
-    dataset.batch(5)
+    #dataset.batch(5)
     if repeat:
       dataset = dataset.repeat()
     iterator = dataset.make_initializable_iterator()
