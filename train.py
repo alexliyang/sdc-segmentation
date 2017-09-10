@@ -1,6 +1,7 @@
 import sys
 
 import tensorflow as tf
+from tensorflow.python.ops import math_ops
 
 sys.path.append("slim/")
 
@@ -17,8 +18,7 @@ class Trainer(object):
     self.optimizer = optimizer(learning_rate)
     self.train_op = None
 
-  def build(self, predictions, labels):
-    print("before pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
+  def build(self, predictions, labels, decoder_scope):
     predictions = tf.reshape(predictions, (-1, self.nb_clasess))
     labels = tf.expand_dims(labels, 0)
     labels = tf.reshape(labels, (-1, self.nb_clasess))
@@ -26,11 +26,28 @@ class Trainer(object):
 
     # wraps the softmax_with_entropy fn. adds it to loss collection
     tf.losses.softmax_cross_entropy(logits=predictions, onehot_labels=labels)
-    # include the regulization losses in loss collection.
-    total_loss = tf.losses.get_total_loss(add_regularization_losses=False)
-    # train_op ensures that each time we ask for the loss, the update_ops
-    # are run and the gradients being computed are applied too.
-    self.train_op = slim.learning.create_train_op(total_loss, self.optimizer)
+    # include the regulization losses in the loss collection.
+    # take only the decoder regulization losses
+    reg_losses = tf.losses.get_regularization_losses(scope=decoder_scope)
+    loss = tf.losses.get_losses()
+    loss += reg_losses
+    total_loss = math_ops.add_n(loss, name='total_loss')
+    # train_op ensures that each time we ask for the loss,
+    # the gradients are computed and applied.
+    variables_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, decoder_scope)
+    self.train_op = slim.learning.create_train_op(total_loss,
+                                                  optimizer=self.optimizer,
+                                                  variables_to_train=variables_to_train)
+
+  @staticmethod
+  def _get_variables_to_train():
+    """
+    Returns a list of variables to train.
+    Decoder is frozen and encoder is trained.s
+    Returns:
+      A list of variables to train by the optimizer.
+    """
+    return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'fcn')
 
   def train(self, iterator,
             filename,
@@ -41,11 +58,9 @@ class Trainer(object):
     global_summaries = set([])
     for model_var in slim.get_model_variables():
       global_summaries.add(tf.summary.histogram(model_var.op.name, model_var))
-    for loss_tensor in tf.losses.get_losses():
-      global_summaries.add(tf.summary.scalar(loss_tensor.op.name, loss_tensor))
-    # total loss is batch loss + regularization loss
-    global_summaries.add(
-        tf.summary.scalar('TotalLoss', tf.losses.get_total_loss()))
+    # total loss
+    total_loss_tensor = tf.get_default_graph().get_tensor_by_name('total_loss:0')
+    global_summaries.add(tf.summary.scalar(total_loss_tensor.op.name, total_loss_tensor))
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(global_summaries), name='summary_op')
     # Save checkpoints regularly.
