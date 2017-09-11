@@ -3,6 +3,7 @@ import os
 import sys
 
 import tensorflow as tf
+from tensorflow.python.framework import ops
 import utils
 
 
@@ -21,7 +22,8 @@ class SlimModelEncoder(object):
     # TODO: Do I even need to pass `num_classes_ here?
     self.network_fn = nets_factory.get_network_fn(name, num_classes, is_training=is_training)
     self.network_arg_scope = nets_factory.arg_scopes_map[name]
-    self.preprocessing_fn = preprocessing_factory.get_preprocessing(self.model_name)
+    self.preprocessing_fn = preprocessing_factory.get_preprocessing(self.model_name,
+                                                                    is_training=is_training)
 
   def _get_variables_to_train(self, scopes):
     """Returns a list of variables to train.
@@ -89,6 +91,7 @@ class FCNDecoder(object):
             net = self.upsample(net, stride)
           else:
             net = self.upsample(layer, stride)
+    net = tf.identity(net, name="logit")
     return net
 
 
