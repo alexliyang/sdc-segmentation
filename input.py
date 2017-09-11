@@ -40,6 +40,11 @@ def _resize_image(image, label, image_shape):
   # resize
   image = tf.image.resize_images(image, image_shape)
   label = tf.image.resize_images(label, image_shape)
+  x = tf.argmax(label, axis=2)
+  y = tf.abs(x - 1)
+  x = tf.expand_dims(x, axis=2)
+  y = tf.expand_dims(y, axis=2)
+  label = tf.concat([x,y],axis=2)
   return image, label
 
 

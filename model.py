@@ -3,7 +3,7 @@ import os
 import sys
 
 import tensorflow as tf
-from tensorflow.python.framework import ops
+from tensorflow.python.ops import nn
 import utils
 
 
@@ -73,9 +73,11 @@ class FCNDecoder(object):
   def convolve(self, layer):
     return slim.conv2d(layer, self.nb_classes, [1, 1], padding='same')
 
-  def upsample(self, layer, stride):
-    #TODO: bilinear upsampling initialization instead.
-    return slim.conv2d_transpose(layer, self.nb_classes, kernel_size=4, stride=stride, padding='same')
+  def upsample(self, layer, stride, activation=None, kernel_size=4):
+    return slim.conv2d_transpose(layer, self.nb_classes, kernel_size=kernel_size,
+                                 stride=stride,
+                                 padding='same',
+                                 activation_fn=activation)
 
   def build(self, tensors_to_connect):
     with tf.variable_scope(self.scope, values=tensors_to_connect) as sc:
@@ -88,7 +90,11 @@ class FCNDecoder(object):
           layer = self.convolve(layer)
           if i > 0:
             net = tf.add(net, layer)
-            net = self.upsample(net, stride)
+            if stride == (4,4):
+              # use a larger kernel for the last upsampling layer
+              net = self.upsample(net, stride, kernel_size= 16)
+            else:
+              net = self.upsample(net, stride, kernel_size= 4)
           else:
             net = self.upsample(layer, stride)
     net = tf.identity(net, name="logit")
