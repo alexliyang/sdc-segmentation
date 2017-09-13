@@ -43,7 +43,7 @@ class Trainer(object):
             assign_op,
             feed_dict,
             filename,
-            number_of_steps=5000,
+            number_of_steps=10000,
             same_summaries_secs=120,
             keep_checkpoint_every_n_hours=0.25):
     # Add summaries for variables and losses.
@@ -77,6 +77,3 @@ class Trainer(object):
                         number_of_steps=number_of_steps,
                         save_summaries_secs=same_summaries_secs,
                         saver=saver)
-
-
-

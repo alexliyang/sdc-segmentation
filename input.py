@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow.python.framework import ops
 print(tf.__version__)
 import functools
 
@@ -73,6 +74,7 @@ def get_train_inputs(batch_size, num_classes=None, image_shape=None, repeat=True
     if repeat:
       dataset = dataset.repeat()
     iterator = dataset.make_initializable_iterator()
+    tf.add_to_collection(ops.GraphKeys.RESOURCES, iterator)
     # sess.run(iterator.initializer, feed_dict={filename: training_filename})
     return iterator, filename
 
