@@ -20,22 +20,11 @@ class SlimModelEncoder(object):
     self.model_name = name
     self.variables_to_exclude = utils.VARIABLES_TO_EXCLUDE[name]
     # TODO: Do I even need to pass `num_classes_ here?
-    self.network_fn = nets_factory.get_network_fn(name, num_classes, is_training=is_training)
+    # need to set weight decay here because it gets called after the arg_scope
+    self.network_fn = nets_factory.get_network_fn(name, num_classes, is_training=is_training, weight_decay=0.0005)
     self.network_arg_scope = nets_factory.arg_scopes_map[name]
     self.preprocessing_fn = preprocessing_factory.get_preprocessing(self.model_name,
                                                                     is_training=is_training)
-
-  def _get_variables_to_train(self, scopes):
-    """Returns a list of variables to train.
-
-    Returns:
-      A list of variables to train by the optimizer.
-    """
-    variables_to_train = []
-    for scope in scopes:
-      variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope)
-      variables_to_train.extend(variables)
-    return variables_to_train
 
   def build(self, image, image_shape):
     tf.logging.set_verbosity(tf.logging.INFO)

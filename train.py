@@ -27,17 +27,22 @@ class Trainer(object):
     # wraps the softmax_with_entropy fn. adds it to loss collection
     tf.losses.softmax_cross_entropy(logits=predictions, onehot_labels=labels)
     # include the regulization losses in the loss collection.
-    # take only the decoder regulization losses
-    reg_losses = tf.losses.get_regularization_losses(scope=decoder_scope)
+    # take all regulization losses
+    #reg_losses = tf.losses.get_regularization_losses(scope=decoder_scope)
+    reg_losses = tf.losses.get_regularization_losses()
+    print("reg losses: {}".format(reg_losses))
     loss = tf.losses.get_losses()
     loss += reg_losses
     total_loss = math_ops.add_n(loss, name='total_loss')
     # train_op ensures that each time we ask for the loss,
     # the gradients are computed and applied.
-    variables_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, decoder_scope)
+    #variables_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, decoder_scope)
+    # train end to end
+    # self.train_op = slim.learning.create_train_op(total_loss,
+    #                                               optimizer=self.optimizer,
+    #                                               variables_to_train=variables_to_train)
     self.train_op = slim.learning.create_train_op(total_loss,
-                                                  optimizer=self.optimizer,
-                                                  variables_to_train=variables_to_train)
+                                                  optimizer=self.optimizer)
 
   def train(self, iterator,
             assign_op,
@@ -45,7 +50,7 @@ class Trainer(object):
             filename,
             number_of_steps=10000,
             same_summaries_secs=120,
-            keep_checkpoint_every_n_hours=0.25):
+            keep_checkpoint_every_n_hours=0.5):
     # Add summaries for variables and losses.
     global_summaries = set([])
     for model_var in slim.get_model_variables():
