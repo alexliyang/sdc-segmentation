@@ -18,7 +18,7 @@ class Trainer(object):
     self.optimizer = optimizer(learning_rate)
     self.train_op = None
 
-  def build(self, predictions, labels, decoder_scope):
+  def build(self, predictions, labels):
     predictions = tf.reshape(predictions, (-1, self.nb_clasess))
     labels = tf.expand_dims(labels, 0)
     labels = tf.reshape(labels, (-1, self.nb_clasess))
@@ -29,11 +29,13 @@ class Trainer(object):
     # include the regulization losses in the loss collection.
     # take all regulization losses
     #reg_losses = tf.losses.get_regularization_losses(scope=decoder_scope)
-    reg_losses = tf.losses.get_regularization_losses()
-    print("reg losses: {}".format(reg_losses))
-    loss = tf.losses.get_losses()
-    loss += reg_losses
-    total_loss = math_ops.add_n(loss, name='total_loss')
+    # reg_losses = tf.losses.get_regularization_losses()
+    # print("reg losses: {}".format(reg_losses))
+    # loss = tf.losses.get_losses()
+    # print("loss: {}".format(loss))
+    # loss += reg_losses
+    # total_loss = math_ops.add_n(loss, name='total_loss')
+    total_loss = tf.losses.get_total_loss()
     # train_op ensures that each time we ask for the loss,
     # the gradients are computed and applied.
     #variables_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, decoder_scope)
@@ -45,8 +47,7 @@ class Trainer(object):
                                                   optimizer=self.optimizer)
 
   def train(self, iterator,
-            assign_op,
-            feed_dict,
+            restore_fn,
             filename,
             number_of_steps=10000,
             same_summaries_secs=120,
@@ -67,8 +68,7 @@ class Trainer(object):
     def initializer_fn(sess):
         input_tensor = tf.get_default_graph().get_tensor_by_name('training_data/input:0')
         sess.run(iterator.initializer, feed_dict={input_tensor: filename})
-        #tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
-        sess.run(assign_op, feed_dict=feed_dict)
+        restore_fn(sess)
     init_fn = initializer_fn
     # Soft placement allows placing on CPU ops without GPU implementation.
     session_config = tf.ConfigProto(allow_soft_placement=True,
