@@ -92,7 +92,6 @@ class FCNDecoder(object):
               net = self.upsample(net, stride, kernel_size=4, scope=scope+str(i))
           else:
             net = self.upsample(layer, stride, kernel_size=4, scope=scope+str(i))
-    net = tf.identity(net, name="logit")
     return net
 
 

@@ -53,12 +53,14 @@ class Trainer(object):
             number_of_steps=10000,
             same_summaries_secs=120,
             keep_checkpoint_every_n_hours=0.5):
-    # Add summaries for variables and losses.
+
+    # Add summaries for images, variables and losses.
+    # image summary
     global_summaries = set([])
     for model_var in slim.get_model_variables():
       global_summaries.add(tf.summary.histogram(model_var.op.name, model_var))
     # total loss
-    total_loss_tensor = tf.get_default_graph().get_tensor_by_name('total_loss:0')
+    total_loss_tensor = tf.get_default_graph().get_tensor_by_name('training/total_loss:0')
     global_summaries.add(tf.summary.scalar(total_loss_tensor.op.name, total_loss_tensor))
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(global_summaries), name='summary_op')
