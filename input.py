@@ -29,11 +29,15 @@ def _parse_tf_record(example_proto, num_classes=None):
   height = tf.cast(parsed_features['height'], tf.int32)
   width = tf.cast(parsed_features['width'], tf.int32)
 
+  # image = tf.cast(parsed_features['height'], tf.float32)
+  # label = tf.cast(parsed_features['width'], tf.float32)
+
   image_shape = tf.stack([height, width, 3])
   label_image_shape = tf.stack([height, width, num_classes])
   # restore dim of the image
   image = tf.reshape(image, image_shape)
   label = tf.reshape(label, label_image_shape)
+
 
   return image, label
 

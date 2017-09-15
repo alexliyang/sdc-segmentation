@@ -58,36 +58,40 @@ class FCNDecoder(object):
     self.nb_classes = nb_classes
     self.scope = scope
 
-  def convolve(self, layer, activation=None):
+  def convolve(self, layer, activation=None,scope=None):
     # no activation for 1x1 convolution
-    return slim.conv2d(layer, self.nb_classes, 1, padding='same', activation_fn=activation)
+    return slim.conv2d(layer, self.nb_classes, 1, padding='same',
+                       activation_fn=activation,
+                       scope=scope)
 
-  def upsample(self, layer, stride, activation=None, kernel_size=4):
+  def upsample(self, layer, stride, kernel_size, activation=None, scope=None):
     # no activation between layers
     return slim.conv2d_transpose(layer, self.nb_classes, kernel_size=kernel_size,
                                  stride=stride,
                                  padding='same',
-                                 activation_fn=activation)
+                                 activation_fn=activation,
+                                 scope=scope)
 
   def build(self, tensors_to_connect):
     with tf.variable_scope(self.scope, values=tensors_to_connect) as sc:
       end_points_collection = sc.name + '_end_points'
-      with slim.arg_scope([slim.conv2d],
+      with slim.arg_scope([slim.conv2d,slim.conv2d_transpose],
                           weights_regularizer=slim.l2_regularizer(1e-3),
                           weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                           outputs_collections=end_points_collection):
+        scope = 'upsample_conv_'
         for i, (layer_name, stride) in enumerate(tensors_to_connect.items()):
           layer = self.end_points[layer_name]
           layer = self.convolve(layer)
           if i > 0:
             net = tf.add(net, layer)
-            if stride == (4, 4):
+            if stride == (8, 8):
               # use a larger kernel for the last upsampling layer
-              net = self.upsample(net, stride, kernel_size=16)
+              net = self.upsample(net, stride, kernel_size=16, scope=scope+str(i))
             else:
-              net = self.upsample(net, stride, kernel_size=4)
+              net = self.upsample(net, stride, kernel_size=4, scope=scope+str(i))
           else:
-            net = self.upsample(layer, stride)
+            net = self.upsample(layer, stride, kernel_size=4, scope=scope+str(i))
     net = tf.identity(net, name="logit")
     return net
 

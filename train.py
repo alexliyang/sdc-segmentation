@@ -19,32 +19,33 @@ class Trainer(object):
     self.train_op = None
 
   def build(self, predictions, labels):
-    predictions = tf.reshape(predictions, (-1, self.nb_clasess))
-    labels = tf.expand_dims(labels, 0)
-    labels = tf.reshape(labels, (-1, self.nb_clasess))
-    print("pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
+    with tf.name_scope('training'):
+      predictions = tf.reshape(predictions, (-1, self.nb_clasess))
+      labels = tf.expand_dims(labels, 0)
+      labels = tf.reshape(labels, (-1, self.nb_clasess))
+      print("pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
 
-    # wraps the softmax_with_entropy fn. adds it to loss collection
-    tf.losses.softmax_cross_entropy(logits=predictions, onehot_labels=labels)
-    # include the regulization losses in the loss collection.
-    # take all regulization losses
-    #reg_losses = tf.losses.get_regularization_losses(scope=decoder_scope)
-    # reg_losses = tf.losses.get_regularization_losses()
-    # print("reg losses: {}".format(reg_losses))
-    # loss = tf.losses.get_losses()
-    # print("loss: {}".format(loss))
-    # loss += reg_losses
-    # total_loss = math_ops.add_n(loss, name='total_loss')
-    total_loss = tf.losses.get_total_loss()
-    # train_op ensures that each time we ask for the loss,
-    # the gradients are computed and applied.
-    #variables_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, decoder_scope)
-    # train end to end
-    # self.train_op = slim.learning.create_train_op(total_loss,
-    #                                               optimizer=self.optimizer,
-    #                                               variables_to_train=variables_to_train)
-    self.train_op = slim.learning.create_train_op(total_loss,
-                                                  optimizer=self.optimizer)
+      # wraps the softmax_with_entropy fn. adds it to loss collection
+      tf.losses.softmax_cross_entropy(logits=predictions, onehot_labels=labels)
+      # include the regulization losses in the loss collection.
+      # take all regulization losses
+      #reg_losses = tf.losses.get_regularization_losses(scope=decoder_scope)
+      # reg_losses = tf.losses.get_regularization_losses()
+      # print("reg losses: {}".format(reg_losses))
+      # loss = tf.losses.get_losses()
+      # print("loss: {}".format(loss))
+      # loss += reg_losses
+      # total_loss = math_ops.add_n(loss, name='total_loss')
+      total_loss = tf.losses.get_total_loss()
+      # train_op ensures that each time we ask for the loss,
+      # the gradients are computed and applied.
+      #variables_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, decoder_scope)
+      # train end to end
+      # self.train_op = slim.learning.create_train_op(total_loss,
+      #                                               optimizer=self.optimizer,
+      #                                               variables_to_train=variables_to_train)
+      self.train_op = slim.learning.create_train_op(total_loss,
+                                                    optimizer=self.optimizer)
 
   def train(self, iterator,
             restore_fn,
