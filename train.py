@@ -52,7 +52,7 @@ class Trainer(object):
             filename,
             number_of_steps=10000,
             same_summaries_secs=120,
-            keep_checkpoint_every_n_hours=0.5):
+            keep_checkpoint_every_n_hours=1):
 
     # Add summaries for images, variables and losses.
     # image summary

@@ -76,7 +76,7 @@ class FCNDecoder(object):
     with tf.variable_scope(self.scope, values=tensors_to_connect) as sc:
       end_points_collection = sc.name + '_end_points'
       with slim.arg_scope([slim.conv2d,slim.conv2d_transpose],
-                          weights_regularizer=slim.l2_regularizer(1e-3),
+                          weights_regularizer=None,
                           weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                           outputs_collections=end_points_collection):
         scope = 'upsample_conv_'
