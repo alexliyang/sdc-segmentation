@@ -46,17 +46,22 @@ class Trainer(object):
       #                                               variables_to_train=variables_to_train)
       self.train_op = slim.learning.create_train_op(total_loss,
                                                     optimizer=self.optimizer)
-
-  def train(self, iterator,
-            restore_fn,
-            filename,
-            number_of_steps=10000,
-            same_summaries_secs=120,
-            keep_checkpoint_every_n_hours=1):
-
+  @staticmethod
+  def add_summaries():
     # Add summaries for images, variables and losses.
-    # image summary
     global_summaries = set([])
+    # image summary
+    image_summary = tf.get_default_graph().get_tensor_by_name('IteratorGetNext:0')
+    image_summary = tf.expand_dims(image_summary, 0)
+    image_summary = tf.summary.image('image', image_summary)
+    global_summaries.add(image_summary)
+    # prediction summary
+    prediction = tf.get_default_graph().get_tensor_by_name('decoder/upsample_conv_2/BiasAdd:0')
+    prediction = tf.argmax(prediction, axis=3)
+    prediction = tf.cast(prediction, tf.float32)
+    prediction = tf.expand_dims(prediction, 3)
+    image_summary = tf.summary.image('prediction', prediction)
+    global_summaries.add(image_summary)
     for model_var in slim.get_model_variables():
       global_summaries.add(tf.summary.histogram(model_var.op.name, model_var))
     # total loss
@@ -64,6 +69,18 @@ class Trainer(object):
     global_summaries.add(tf.summary.scalar(total_loss_tensor.op.name, total_loss_tensor))
     # Merge all summaries together.
     summary_op = tf.summary.merge(list(global_summaries), name='summary_op')
+    return summary_op
+
+  def train(self, iterator,
+            restore_fn,
+            filename,
+            _add_summaries = True,
+            number_of_steps=10000,
+            same_summaries_secs=120,
+            keep_checkpoint_every_n_hours=1):
+    summary_op = None
+    if _add_summaries:
+      summary_op = self.add_summaries()
     # Save checkpoints regularly.
     saver = tf.train.Saver(
         keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)

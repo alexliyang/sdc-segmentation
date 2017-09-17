@@ -38,7 +38,8 @@ class SlimModelEncoder(object):
     with slim.arg_scope(self.network_arg_scope()):
       _, end_points = self.network_fn(processed_images,
                                       fc_conv_padding='same',
-                                      spatial_squeeze=False)
+                                      spatial_squeeze=False,
+                                      dropout_keep_prob=1.0)
     # create an op to assign variables from a checkpoint
     _model_ckpt_name = self.model_name + '.ckpt'
     _var_list = slim.get_variables(self.model_name)
