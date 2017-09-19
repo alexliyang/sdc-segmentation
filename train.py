@@ -12,17 +12,24 @@ TRAIN_DIR = "/tmp/tf"
 
 class Trainer(object):
   def __init__(self, nb_classes, optimizer, learning_rate):
-    self.nb_clasess = nb_classes
+    self.nb_classes = nb_classes
     # learning rate can be a placeholder tensor
     self.learning_rate = learning_rate
     self.optimizer = optimizer(learning_rate)
     self.train_op = None
 
-  def build(self, predictions, labels):
+  def build(self, predictions, labels, one_hot=True):
     with tf.name_scope('training'):
-      predictions = tf.reshape(predictions, (-1, self.nb_clasess))
+      tf.Print(predictions,[predictions])
+      if one_hot:
+        labels = tf.one_hot(labels, depth=self.nb_classes)
+        labels = tf.squeeze(labels, axis=2)
+      else:
+        labels = tf.reshape(labels, (-1, self.nb_clasess))
+        predictions = tf.reshape(predictions, (-1, self.nb_classes))
       labels = tf.expand_dims(labels, 0)
-      labels = tf.reshape(labels, (-1, self.nb_clasess))
+
+
       print("pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
 
       # wraps the softmax_with_entropy fn. adds it to loss collection
