@@ -20,10 +20,11 @@ class Trainer(object):
 
   def build(self, predictions, labels, one_hot=True):
     with tf.name_scope('training'):
-      tf.Print(predictions,[predictions])
       if one_hot:
         labels = tf.one_hot(labels, depth=self.nb_classes)
         labels = tf.squeeze(labels, axis=2)
+        label_size = tf.constant(labels.get_shape().as_list()[1:3])
+        predictions = tf.image.resize_bilinear(predictions, label_size)
       else:
         labels = tf.reshape(labels, (-1, self.nb_clasess))
         predictions = tf.reshape(predictions, (-1, self.nb_classes))
