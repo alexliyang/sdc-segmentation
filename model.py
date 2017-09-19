@@ -25,14 +25,14 @@ class SlimModelEncoder(object):
     self.preprocessing_fn = preprocessing_factory.get_preprocessing(self.model_name,
                                                                     is_training=is_training)
 
-  def build(self, image, image_shape):
+  def build(self, image):
     tf.logging.set_verbosity(tf.logging.INFO)
     # preprocess images. the image might need to be reshaped to cater to the model used.
-    h, w = image_shape
+    #h, w = image_shape
     # TODO: This takes one image at a time :(
     # get the next batch from the dataset iterator
-    processed_images = self.preprocessing_fn(image, h, w)
-    processed_images = tf.expand_dims(processed_images, 0)
+    #processed_images = self.preprocessing_fn(image, h, w)
+    processed_images = tf.expand_dims(image, 0)
 
     # build the model with the arg scopes - common params
     with slim.arg_scope(self.network_arg_scope()):
