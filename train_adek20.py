@@ -10,7 +10,7 @@ NB_CLASSES = 151
 
 
 def main(_):
-	# Input
+  # Input
   iterator, filename = get_train_inputs(batch_size=1,
 	                                      repeat=True,
 	                                      num_classes=1)
