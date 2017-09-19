@@ -11,7 +11,7 @@ NB_CLASSES = 151
 
 def main(_):
 	# Input
-	iterator, filename = get_train_inputs(batch_size=1,
+  iterator, filename = get_train_inputs(batch_size=1,
 	                                      repeat=True,
 	                                      num_classes=1)
 	# Model
@@ -34,9 +34,6 @@ def main(_):
 	              restore_fn=restore_fn,
 	              number_of_steps=2500,
 	              filename=['data/adek20_training.tfecord'])
-
-
-
 
 if __name__ == '__main__':
   tf.app.run()
