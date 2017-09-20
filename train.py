@@ -18,13 +18,14 @@ class Trainer(object):
     self.optimizer = optimizer(learning_rate)
     self.train_op = None
 
-  def build(self, predictions, labels, one_hot=True):
+  def build(self, predictions, labels, one_hot=False):
     with tf.name_scope('training'):
       if one_hot:
         labels = tf.one_hot(labels, depth=self.nb_classes)
         labels = tf.squeeze(labels, axis=2)
-        label_size = tf.constant(labels.get_shape().as_list()[1:3])
-        predictions = tf.image.resize_bilinear(predictions, label_size)
+        label_shape = tf.shape(labels)[:2]
+        #print("pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
+        predictions = tf.image.resize_bilinear(predictions, label_shape, name='resize_predictions')
       else:
         labels = tf.reshape(labels, (-1, self.nb_clasess))
         predictions = tf.reshape(predictions, (-1, self.nb_classes))
@@ -100,7 +101,7 @@ class Trainer(object):
     init_fn = initializer_fn
     # Soft placement allows placing on CPU ops without GPU implementation.
     session_config = tf.ConfigProto(allow_soft_placement=True,
-                                    log_device_placement=True)
+                                    log_device_placement=False)
     # train
     slim.learning.train(train_op=self.train_op,
                         logdir=TRAIN_DIR,

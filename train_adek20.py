@@ -29,7 +29,7 @@ def main(_):
 
   # Train
   trainer = Trainer(nb_classes=NB_CLASSES, optimizer=tf.train.AdamOptimizer, learning_rate=1e-4)
-  trainer.build(predictions=net, labels=label)
+  trainer.build(predictions=net, labels=label, one_hot=True)
   trainer.train(iterator,
 	              restore_fn=restore_fn,
 	              number_of_steps=2500,
