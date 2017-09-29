@@ -85,8 +85,9 @@ class Trainer(object):
             filename,
             _add_summaries = True,
             number_of_steps=10000,
+            save_interval_secs = 6000,
             same_summaries_secs=120,
-            keep_checkpoint_every_n_hours=1):
+            keep_checkpoint_every_n_hours=5):
     summary_op = None
     if _add_summaries:
       summary_op = self.add_summaries()
@@ -108,6 +109,7 @@ class Trainer(object):
                         session_config=session_config,
                         summary_op=summary_op,
                         init_fn=init_fn,
+                        save_interval_secs = save_interval_secs,
                         number_of_steps=number_of_steps,
                         save_summaries_secs=same_summaries_secs,
                         saver=saver)
