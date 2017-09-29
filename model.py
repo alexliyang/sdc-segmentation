@@ -106,11 +106,16 @@ class DenseNet(object):
   def __init__(self,
                growth_rate,
                is_training=True,
+               global_pool=True,
                reuse=None,
-               num_classes=None):
+               num_classes=None,
+               spatial_squeeze=True):
     self.growth_rate = growth_rate
     self.reuse = reuse
     self.is_training = is_training
+    self.global_pool = global_pool
+    self.num_classes = num_classes
+    self.spatial_squeeze = spatial_squeeze
 
   def build(self, inputs,
             scope,
@@ -139,7 +144,7 @@ class DenseNet(object):
         with slim.arg_scope([slim.batch_norm, slim.dropout],
                             is_training=self.is_training):
           net = inputs
-          # TODO: Normalize the input
+          # TODO: Preprocess the input
           initial_nb_layers = self.growth_rate * 2
           net = slim.conv2d(net, initial_nb_layers, kernel_size=7,
                             padding='same',
@@ -157,16 +162,22 @@ class DenseNet(object):
                   net = tf.concat(axis=3, values=[net, output])
               # the last layer does not have a transition layer
               if bn + 1 != len(num_units):
-                densenet_utils.add_transition_layer()
+                net = densenet_utils.add_transition_layer(net)
 
-
-
-
-
-
-
-
-
+        if self.global_pool:
+          # Global average pooling.
+          net = tf.reduce_mean(net, [1, 2], name='pool5', keep_dims=True)
+        if self.num_classes is not None:
+          net = slim.conv2d(net, self.num_classes, [1, 1], activation_fn=None,
+                            normalizer_fn=None, scope='logits')
+          if self.spatial_squeeze:
+            net = tf.squeeze(net, [1, 2], name='SpatialSqueeze')
+        # Convert end_points_collection into a dictionary of end_points.
+        end_points = slim.utils.convert_collection_to_dict(
+            end_points_collection)
+        if self.num_classes is not None:
+          end_points['predictions'] = slim.softmax(net, scope='predictions')
+        return net, end_points
 
 
 class Tiramisu(object):

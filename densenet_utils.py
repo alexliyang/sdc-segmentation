@@ -18,27 +18,28 @@ class Block(collections.namedtuple('Block', ['scope', 'unit_fn', 'args'])):
       block to serve as argument to unit_fn.
   """
 
+#TODO: What does this do?
 @slim.add_arg_scope
 def stack_blocks_dense(net,
                        growth_rate,
                        bottleneck_number_feature_maps,
                        dropout_keep_prob=0.2):
   """Stacks DenseNet units"""
-  net = slim.batch_norm(net,
+  # bottleneck
+  if bottleneck_number_feature_maps:
+    net = slim.batch_norm(net,
                         activation_fn=tf.nn.relu,
                         scope='batch_norm')
-  net = slim.conv2d(net, bottleneck_number_feature_maps,
+    net = slim.conv2d(net, bottleneck_number_feature_maps,
                     kernel_size=1,
                     normalizer_fn=None,
                     activation_fn=None,
                     scope='bottleneck')
-
-
-  if dropout_keep_prob:
-    net = slim.dropout(net,
+    if dropout_keep_prob:
+      net = slim.dropout(net,
 	                   keep_prob=dropout_keep_prob,
 	                   scope='dropout')
-
+  # convolution
   net = slim.batch_norm(net,
                         activation_fn=tf.nn.relu,
                         scope='batch_norm')
@@ -55,8 +56,21 @@ def stack_blocks_dense(net,
   return net
 
 @slim.add_arg_scope
-def add_transition_layer(net, theta=1.0):
-	
+def add_transition_layer(net, compression_factor=1.0):
+  m = int(tf.shape(net)[-1] * compression_factor)
+  net = slim.batch_norm(net,
+                        activation_fn=tf.nn.relu,
+                        scope='batch_norm')
+  net = slim.conv2d(net, m,
+                    kernel_size=1,
+                    normalizer_fn=None,
+                    activation_fn=None,
+                    scope='transition')
+  return slim.avg_pool2d(net, [2, 2], scope='pool')
+
+
+
+
 
 
 
