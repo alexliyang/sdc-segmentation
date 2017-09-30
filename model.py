@@ -5,6 +5,7 @@ import sys
 import tensorflow as tf
 from tensorflow.python.ops import nn
 import utils
+import preprocess
 import densenet_utils
 
 
@@ -105,19 +106,21 @@ class FCNDecoder(object):
 class DenseNet(object):
   def __init__(self,
                growth_rate,
+               preprocess=preprocess.preprocess,
                is_training=True,
                global_pool=True,
                reuse=None,
                num_classes=None,
                spatial_squeeze=True):
     self.growth_rate = growth_rate
+    self.preprocess = preprocess
     self.reuse = reuse
     self.is_training = is_training
     self.global_pool = global_pool
     self.num_classes = num_classes
     self.spatial_squeeze = spatial_squeeze
 
-  def build(self, inputs,
+  def build(self, image,
             scope,
             num_units,
             bottleneck_number_feature_maps=None,
@@ -134,6 +137,9 @@ class DenseNet(object):
     rate = self.growth_rate
     bottleneck_maps = bottleneck_number_feature_maps
 
+    inputs = self.preprocess(image, scope='preprocess')
+    print(inputs.shape)
+
     with tf.variable_scope(scope, 'densenet', [inputs], reuse=self.reuse) as sc:
       end_points_collection = sc.name + '_end_points'
       with slim.arg_scope([slim.conv2d,
@@ -144,21 +150,24 @@ class DenseNet(object):
         with slim.arg_scope([slim.batch_norm, slim.dropout],
                             is_training=self.is_training):
           net = inputs
-          # TODO: Preprocess the input
           initial_nb_layers = self.growth_rate * 2
-          net = slim.conv2d(net, initial_nb_layers, kernel_size=7,
+          net = slim.conv2d(net, initial_nb_layers,
+                            kernel_size=7,
                             padding='same',
                             stride=2,
                             scope='conv1')
+          print(net.shape)
           net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
 
+          # consecutive denseblocks each followed by a transition layer.
           for bn, num_units_in_block in enumerate(num_units):
-            with tf.variable_scope("block_".format(bn + 1), values=[net]) as sc:
+            with tf.variable_scope("block_{}".format(bn + 1), values=[net]):
               for un, unit in enumerate(range(num_units_in_block)):
-                with tf.variable_scope("unit_".format(un + 1), values=[net]):
+                with tf.variable_scope("unit_{}".format(un + 1), values=[net]):
                   output = densenet_utils.stack_blocks_dense(net,
                                                              growth_rate=rate,
-                                                             bottleneck_number_feature_maps=bottleneck_maps)
+                                                             bottleneck_number_feature_maps=bottleneck_maps,
+                                                             dropout_keep_prob=dropout_keep_prob)
                   net = tf.concat(axis=3, values=[net, output])
               # the last layer does not have a transition layer
               if bn + 1 != len(num_units):
