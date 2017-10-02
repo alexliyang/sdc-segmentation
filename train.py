@@ -17,6 +17,7 @@ class Trainer(object):
     self.learning_rate = learning_rate
     self.optimizer = optimizer(learning_rate)
     self.train_op = None
+    self.prediction = None
 
   def build(self, predictions, labels, one_hot=False):
     with tf.name_scope('training'):
@@ -24,39 +25,20 @@ class Trainer(object):
         labels = tf.one_hot(labels, depth=self.nb_classes)
         labels = tf.squeeze(labels, axis=2)
         label_shape = tf.shape(labels)[:2]
-        #print("pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
         predictions = tf.image.resize_bilinear(predictions, label_shape, name='resize_predictions')
       else:
         labels = tf.reshape(labels, (-1, self.nb_clasess))
         predictions = tf.reshape(predictions, (-1, self.nb_classes))
+      self.prediction = predictions
       labels = tf.expand_dims(labels, 0)
-
-
       print("pred shape {}, label shape {}".format(predictions.get_shape(), labels.get_shape()))
-
       # wraps the softmax_with_entropy fn. adds it to loss collection
       tf.losses.softmax_cross_entropy(logits=predictions, onehot_labels=labels)
       # include the regulization losses in the loss collection.
-      # take all regulization losses
-      #reg_losses = tf.losses.get_regularization_losses(scope=decoder_scope)
-      # reg_losses = tf.losses.get_regularization_losses()
-      # print("reg losses: {}".format(reg_losses))
-      # loss = tf.losses.get_losses()
-      # print("loss: {}".format(loss))
-      # loss += reg_losses
-      # total_loss = math_ops.add_n(loss, name='total_loss')
       total_loss = tf.losses.get_total_loss()
-      # train_op ensures that each time we ask for the loss,
-      # the gradients are computed and applied.
-      #variables_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, decoder_scope)
-      # train end to end
-      # self.train_op = slim.learning.create_train_op(total_loss,
-      #                                               optimizer=self.optimizer,
-      #                                               variables_to_train=variables_to_train)
       self.train_op = slim.learning.create_train_op(total_loss,
                                                     optimizer=self.optimizer)
-  @staticmethod
-  def add_summaries():
+  def add_summaries(self):
     # Add summaries for images, variables and losses.
     global_summaries = set([])
     # image summary
@@ -65,8 +47,7 @@ class Trainer(object):
     image_summary = tf.summary.image('image', image_summary)
     global_summaries.add(image_summary)
     # prediction summary
-    prediction = tf.get_default_graph().get_tensor_by_name('decoder/upsample_conv_2/BiasAdd:0')
-    prediction = tf.argmax(prediction, axis=3)
+    prediction = tf.argmax(self.prediction, axis=3)
     prediction = tf.cast(prediction, tf.float32)
     prediction = tf.expand_dims(prediction, 3)
     image_summary = tf.summary.image('prediction', prediction)
@@ -81,8 +62,8 @@ class Trainer(object):
     return summary_op
 
   def train(self, iterator,
-            restore_fn,
             filename,
+            restore_fn=None,
             _add_summaries = True,
             number_of_steps=10000,
             save_interval_secs = 6000,
@@ -98,7 +79,8 @@ class Trainer(object):
     def initializer_fn(sess):
         input_tensor = tf.get_default_graph().get_tensor_by_name('training_data/input:0')
         sess.run(iterator.initializer, feed_dict={input_tensor: filename})
-        restore_fn(sess)
+        if restore_fn:
+          restore_fn(sess)
     init_fn = initializer_fn
     # Soft placement allows placing on CPU ops without GPU implementation.
     session_config = tf.ConfigProto(allow_soft_placement=True,

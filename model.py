@@ -106,14 +106,12 @@ class FCNDecoder(object):
 class DenseNet(object):
   def __init__(self,
                growth_rate,
-               preprocess=preprocess.preprocess,
                is_training=True,
-               global_pool=True,
+               global_pool=False,
                reuse=None,
                num_classes=None,
                spatial_squeeze=True):
     self.growth_rate = growth_rate
-    self.preprocess = preprocess
     self.reuse = reuse
     self.is_training = is_training
     self.global_pool = global_pool
@@ -134,11 +132,11 @@ class DenseNet(object):
       dropout_rate: dropout rate to apply for each conv unit in training.
       num_units: Array of number of units in each block.
     """
+    skip_connections = []
     rate = self.growth_rate
     bottleneck_maps = bottleneck_number_feature_maps
 
-    inputs = self.preprocess(image, scope='preprocess')
-    print(inputs.shape)
+    inputs = preprocess.preprocess(image, 'preprocess')
 
     with tf.variable_scope(scope, 'densenet', [inputs], reuse=self.reuse) as sc:
       end_points_collection = sc.name + '_end_points'
@@ -146,6 +144,7 @@ class DenseNet(object):
                            densenet_utils.stack_blocks_dense],
                           # don't use bias for any convolution
                           biases_initializer = False,
+                          padding='same',
                           outputs_collections=end_points_collection):
         with slim.arg_scope([slim.batch_norm, slim.dropout],
                             is_training=self.is_training):
@@ -156,8 +155,7 @@ class DenseNet(object):
                             padding='same',
                             stride=2,
                             scope='conv1')
-          print(net.shape)
-          net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
+          net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1', padding='same')
 
           # consecutive denseblocks each followed by a transition layer.
           for bn, num_units_in_block in enumerate(num_units):
@@ -168,11 +166,15 @@ class DenseNet(object):
                                                              growth_rate=rate,
                                                              bottleneck_number_feature_maps=bottleneck_maps,
                                                              dropout_keep_prob=dropout_keep_prob)
+
                   net = tf.concat(axis=3, values=[net, output])
               # the last layer does not have a transition layer
               if bn + 1 != len(num_units):
-                net = densenet_utils.add_transition_layer(net)
-
+                # the output of the dense block. add to the collection for upsampling
+                # exclude the bottleneck (the last layer)
+                tf.add_to_collection('skip_connections', net)
+                # downsample
+                net = densenet_utils.add_transition_down_layer(net)
         if self.global_pool:
           # Global average pooling.
           net = tf.reduce_mean(net, [1, 2], name='pool5', keep_dims=True)
@@ -188,22 +190,68 @@ class DenseNet(object):
           end_points['predictions'] = slim.softmax(net, scope='predictions')
         return net, end_points
 
-
 class Tiramisu(object):
-  def __init(self):
-    pass
+  def __init__(self,
+               skip_connection_collection,
+               num_units,
+               num_classes,
+               is_training=True,
+               reuse=None):
+    self.skip_connection_collection = skip_connection_collection
+    self.num_units = num_units
+    self.num_classes = num_classes
+    # get the tensors at the end of each block
+    self.skip_connections = tf.get_collection(skip_connection_collection)
+    if len(self.num_units) != len(self.skip_connections):
+      raise ValueError("number of units in upsampling blocks must match number of skip connections")
+    self.is_training = is_training
+    self.reuse = reuse
 
-
-
-
-
-
-
-
-
-
-
-
+  def build(self,
+            net,
+            scope,
+            rate,
+            dropout_keep_prob=0.2):
+    with tf.variable_scope(scope, 'tiramisu', [self.skip_connections], reuse=self.reuse) as sc:
+      end_points_collection = sc.name + '_end_points'
+      with slim.arg_scope([slim.conv2d,
+                           densenet_utils.stack_blocks_dense],
+                          # don't use bias for any convolution
+                          biases_initializer = False,
+                          padding='same',
+                          outputs_collections=end_points_collection):
+        with slim.arg_scope([slim.batch_norm, slim.dropout],
+                            is_training=self.is_training):
+          # start from the last layer
+          for bn, (num_units_in_block, skip_connection) in enumerate(zip(self.num_units, reversed(self.skip_connections))):
+            with tf.variable_scope("block_{}".format(bn + 1), values=[net]):
+              # transition up the bottleneck layer
+              net = densenet_utils.add_transition_up_layer(net)
+              # concat with next skip connection
+              net = tf.concat(axis=3, values=[net, skip_connection])
+              #print("concat: {}".format(net))
+              # denseblock
+              for un, unit in enumerate(range(num_units_in_block)):
+                with tf.variable_scope("unit_{}".format(un + 1), values=[net]):
+                  output = densenet_utils.stack_blocks_dense(net,
+                                                             growth_rate=rate,
+                                                             dropout_keep_prob=dropout_keep_prob)
+                  # unlike downsampling path, do not concatenate the input layer
+                  if un > 0:
+                    net = tf.concat(axis=3, values=[net, output])
+                  else:
+                    net = output
+            # end of the block
+            #print("end of block {}".format(net))
+        if self.num_classes is not None:
+          net = slim.conv2d(net, self.num_classes, [1, 1],
+                            activation_fn=None,
+                            normalizer_fn=None,
+                            scope='logits')
+      # Convert end_points_collection into a dictionary of end_points.
+      end_points = slim.utils.convert_collection_to_dict(
+        end_points_collection)
+    return net, end_points
 
 
 
