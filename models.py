@@ -246,7 +246,8 @@ class Tiramisu(object):
 
 class DeepLabV3(object):
   """
-  Atrous convolution implementation
+  Atrous convolution implementation.
+  The key is the `output_stride` variable, which determines the downsizing of the initial feature map
   The feature map is bilinearly upsampled back to the original image size in the training class
   """
   def __init__(self, name, num_classes, is_training):
@@ -289,6 +290,10 @@ class DeepLabV3(object):
         scope=scope)
 
     # create an op to assign variables from a checkpoint
+    # resnet_v2_50 has 4 blocks. the pretrained part of the network is up to the 5th block
+    # also, exclude the weights for the 1x1 convolution at the end because it requires
+    # the exact same number of classes the model is trained on - this is the number
+    # of filters as it is the case with 1x1 filters at the end
     _model_ckpt_name = self.model_name + '.ckpt'
     _var_list = slim.get_variables(self.model_name)
     _filtered_var_list = slim.filter_variables(_var_list, exclude_patterns=self.variables_to_exclude)
