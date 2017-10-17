@@ -1,21 +1,8 @@
 from __future__ import print_function
 
 import tensorflow as tf
-from tensorflow.python.framework import ops
 print(tf.__version__)
 import functools
-
-# TODO: Infer number of classes.
-# TODO: Make it transferrable across datasets via classes - road, pedastrian, car etc
-# def _transform_label(image, label):
-#   """two classes: road and background"""
-#   print(label.shape)
-#   gt_background = tf.reduce_all(label == BACKGROUND_COLOR, axis=2)
-#   gt_recip_background = tf.reduce_all(label != BACKGROUND_COLOR, axis=2)
-#   gt_background = tf.expand_dims(gt_background, axis=2)
-#   gt_recip_background = tf.expand_dims(gt_recip_background, axis=2)
-#   label = tf.concat((gt_background, gt_recip_background), axis=2)
-#   return image, label
 
 def _parse_tf_record(example_proto, num_classes=None):
   features = {"height": tf.FixedLenFeature((), tf.int64),

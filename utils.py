@@ -8,10 +8,12 @@ from slim.datasets import dataset_utils
 CHECKPOINTS_DIR = 'model_checkpoints/'
 
 PRETRAINED_MODEL_PATHS = \
-	{"vgg_16": "http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz"}
+	{"vgg_16": "http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz",
+	 "resnet_v2": "http://download.tensorflow.org/models/resnet_v2_50_2017_04_14.tar.gz"}
 
 VARIABLES_TO_EXCLUDE = \
-	{"vgg_16": "fc8"}
+	{"vgg_16": "fc8",
+	 "resnet_v2_50": ["pool5", "logits", "block5", "block6", "block7"]}
 
 def slim_maybe_download(name):
 	if not tf.gfile.Exists(CHECKPOINTS_DIR):

@@ -10,7 +10,6 @@ import densenet_utils
 
 sys.path.append("slim/")
 
-from slim import nets
 from slim.nets import nets_factory
 from slim.nets import resnet_v2
 from slim.preprocessing import preprocessing_factory
@@ -30,21 +29,11 @@ class SlimModelEncoder(object):
 
   def build(self, image):
     tf.logging.set_verbosity(tf.logging.INFO)
-    # TODO: This takes one image at a time :(
-    # preprocess images. the image might need to be reshaped to cater to the model used.
-    image_shape = tf.shape(image)[:2]
-    image_shape = image_shape - tf.floormod(image_shape, 32)
-    image_shape = tf.cast(image_shape, tf.int32)
-    #image_shape = tf.Print(image_shape, [image_shape])
-    print(image_shape)
-    # TODO: Where is preproessing image normalization?
-    # get the next batch from the dataset iterator
-    processed_images = tf.image.resize_images(image, image_shape)
-    processed_images = tf.expand_dims(processed_images, 0)
+    inputs = preprocess.preprocess(image, 'preprocess')
 
     # build the model with the arg scopes - common params
     with slim.arg_scope(self.network_arg_scope()):
-      _, end_points = self.network_fn(processed_images,
+      _, end_points = self.network_fn(inputs,
                                       fc_conv_padding='same',
                                       spatial_squeeze=False,
                                       dropout_keep_prob=1.0)
@@ -260,17 +249,19 @@ class DeepLabV3(object):
   Atrous convolution implementation
   The feature map is bilinearly upsampled back to the original image size
   """
-  def __init__(self):
-    pass
+  def __init__(self, name, num_classes, is_training):
+    self.model_name = name
+    self.num_classes = num_classes
+    self.is_training = is_training
+    self.network_arg_scope = nets_factory.arg_scopes_map[name]
+    self.variables_to_exclude = utils.VARIABLES_TO_EXCLUDE[name]
 
   def build(self,
             image,
-            num_classes=None,
-            is_training=True,
             global_pool=False,
             output_stride=None,
             reuse=None,
-            scope='resnet_7_77'):
+            scope='resnet_v2_50'):
 
     inputs = preprocess.preprocess(image, 'preprocess')
     """ResNet model, replicas of block_4 extended out to 3 more blocks"""
@@ -283,18 +274,31 @@ class DeepLabV3(object):
       resnet_v2.resnet_v2_block('block6', base_depth=512, num_units=3, stride=2),
       resnet_v2.resnet_v2_block('block7', base_depth=512, num_units=3, stride=2),
     ]
-    net, end_points = resnet_v2.resnet_v2(
-      inputs,
-      blocks,
-      num_classes,
-      is_training,
-      global_pool,
-      output_stride,
-      include_root_block=True,
-      spatial_squeeze=False,
-      reuse=reuse,
-      scope=scope)
+    # build the model with the arg scopes
+    with slim.arg_scope(self.network_arg_scope()):
+      net, end_points = resnet_v2.resnet_v2(
+        inputs,
+        blocks,
+        self.num_classes,
+        self.is_training,
+        global_pool,
+        output_stride,
+        include_root_block=True,
+        spatial_squeeze=False,
+        reuse=reuse,
+        scope=scope)
 
-    return net, end_points
+    # create an op to assign variables from a checkpoint
+    _model_ckpt_name = self.model_name + '.ckpt'
+    _var_list = slim.get_variables(self.model_name)
+    _filtered_var_list = slim.filter_variables(_var_list, exclude_patterns=self.variables_to_exclude)
+    print("restore following variables: {}".format(_filtered_var_list))
+    restore_op = slim.assign_from_checkpoint_fn(
+      os.path.join(utils.CHECKPOINTS_DIR, _model_ckpt_name),
+      _filtered_var_list,
+      reshape_variables=False
+    )
+    return restore_op, net
+
 
 
