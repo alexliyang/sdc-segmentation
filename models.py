@@ -247,7 +247,7 @@ class Tiramisu(object):
 class DeepLabV3(object):
   """
   Atrous convolution implementation
-  The feature map is bilinearly upsampled back to the original image size
+  The feature map is bilinearly upsampled back to the original image size in the training class
   """
   def __init__(self, name, num_classes, is_training):
     self.model_name = name
