@@ -3,7 +3,6 @@ import os
 import sys
 
 import tensorflow as tf
-from tensorflow.python.ops import nn
 import utils
 import preprocess
 import densenet_utils
@@ -11,7 +10,9 @@ import densenet_utils
 
 sys.path.append("slim/")
 
+from slim import nets
 from slim.nets import nets_factory
+from slim.nets import resnet_v2
 from slim.preprocessing import preprocessing_factory
 slim = tf.contrib.slim
 
@@ -254,29 +255,46 @@ class Tiramisu(object):
     return net, end_points
 
 
+class DeepLabV3(object):
+  """
+  Atrous convolution implementation
+  The feature map is bilinearly upsampled back to the original image size
+  """
+  def __init__(self):
+    pass
+
+  def build(self,
+            image,
+            num_classes=None,
+            is_training=True,
+            global_pool=False,
+            output_stride=None,
+            reuse=None,
+            scope='resnet_7_77'):
+
+    inputs = preprocess.preprocess(image, 'preprocess')
+    """ResNet model, replicas of block_4 extended out to 3 more blocks"""
+    blocks = [
+      resnet_v2.resnet_v2_block('block1', base_depth=64, num_units=3, stride=2),
+      resnet_v2.resnet_v2_block('block2', base_depth=128, num_units=4, stride=2),
+      resnet_v2.resnet_v2_block('block3', base_depth=256, num_units=6, stride=2),
+      resnet_v2.resnet_v2_block('block4', base_depth=512, num_units=3, stride=2),
+      resnet_v2.resnet_v2_block('block5', base_depth=512, num_units=3, stride=2),
+      resnet_v2.resnet_v2_block('block6', base_depth=512, num_units=3, stride=2),
+      resnet_v2.resnet_v2_block('block7', base_depth=512, num_units=3, stride=2),
+    ]
+    net, end_points = resnet_v2.resnet_v2(
+      inputs,
+      blocks,
+      num_classes,
+      is_training,
+      global_pool,
+      output_stride,
+      include_root_block=True,
+      spatial_squeeze=False,
+      reuse=reuse,
+      scope=scope)
+
+    return net, end_points
 
 
-#
-# """
-# Load an encoder saved as `saved_model`.
-# """
-# class SavedModelEncoder(object):
-# 	def __init__(self, name, saved_model_path):
-# 		if tf.saved_model.loader.maybe_saved_model_directory(saved_model_path):
-# 			tf.saved_model.loader.load()
-#
-#
-#
-# 	def build(self, inputs):
-# 		init_fn, end_points = None, None
-#
-# 		return init_fn, end_points
-#
-#
-#
-#
-#
-# class Decoder(object):
-# 	def __init__(self):
-# 		self.variables = None
-# 		self.graph_def = None

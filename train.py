@@ -66,7 +66,7 @@ class Trainer(object):
             restore_fn=None,
             _add_summaries = True,
             number_of_steps=10000,
-            save_interval_secs = 6000,
+            save_interval_secs = 12000,
             same_summaries_secs=120,
             keep_checkpoint_every_n_hours=5):
     summary_op = None

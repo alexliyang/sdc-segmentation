@@ -2,7 +2,7 @@ from __future__ import print_function
 from collections import OrderedDict
 
 from input import *
-from model import *
+from models import *
 from train import *
 
 NB_CLASSES = 151
